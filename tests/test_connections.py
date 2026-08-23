@@ -21,7 +21,7 @@ def main():
     mem.test_connection()
     print("  OK — connected.")
 
-    print("\nAll connections healthy. Ready for sub-problem 2.")
+    print("\nAll connections healthy")
 
 
 if __name__ == "__main__":
