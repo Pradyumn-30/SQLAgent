@@ -1,0 +1,37 @@
+"""
+Centralized configuration for the Postgres Query Agent.
+
+All environment variables are loaded and validated here, once, so that
+every other module imports a single `settings` object instead of calling
+os.getenv() scattered around the codebase.
+"""
+
+from pydantic_settings import BaseSettings, SettingsConfigDict
+
+
+class Settings(BaseSettings):
+    # --- Target Postgres DB (must be a READ-ONLY role at the DB grants level) ---
+    pg_host: str = "localhost"
+    pg_port: int = 5432
+    pg_database: str
+    pg_user: str
+    pg_password: str
+
+    # --- Redis (persistent memory store) ---
+    redis_host: str = "localhost"
+    redis_port: int = 6379
+    redis_db: int = 0
+    redis_password: str | None = None
+
+    # --- Memory TTL ---
+    memory_ttl_seconds: int = 604800  # 7 days default
+
+    model_config = SettingsConfigDict(
+        env_file=".env",
+        env_file_encoding="utf-8",
+        case_sensitive=False,
+    )
+
+
+# Singleton instance — import this everywhere else.
+settings = Settings()
