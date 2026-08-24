@@ -10,14 +10,14 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
 class Settings(BaseSettings):
-    # --- Target Postgres DB (must be a READ-ONLY role at the DB grants level) ---
+    # --- Postgres DB ---
     pg_host: str = "localhost"
     pg_port: int = 5432
     pg_database: str
     pg_user: str
     pg_password: str
 
-    # --- Redis (persistent memory store) ---
+    # --- Redis ---
     redis_host: str = "localhost"
     redis_port: int = 6379
     redis_db: int = 0

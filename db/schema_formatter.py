@@ -3,7 +3,7 @@ Formats the structured schema metadata (from schema_introspector.py) into
 the markdown block that gets pasted into prompts/system_prompt.md as
 ground truth.
 
-Kept separate from introspection so the *format* can change (e.g. you
+Kept separate from introspection so the *format* can change (e.g. we
 later decide to add sample values, or switch to a more compact syntax)
 without touching the DB query logic.
 """

@@ -1,9 +1,7 @@
 """
 Read-only Postgres client.
-
-Defense in depth for the read-only guarantee:
   1. The DB role used here should ONLY have SELECT grants (enforce this
-     at the database level — see README "Creating the read-only role").
+     at the database level.
   2. Every connection additionally sets the session to READ ONLY at the
      Postgres transaction level, so even a misconfigured role would still
      be blocked from writing.
@@ -39,15 +37,14 @@ class PostgresReadOnlyClient:
     def _connection(self):
         conn = psycopg2.connect(**self._conn_params)
         try:
-            # Defense in depth: enforce read-only at the transaction level,
-            # regardless of what the DB role's grants already restrict.
+            # Enforce read-only at the transaction level
             conn.set_session(readonly=True, autocommit=False)
             yield conn
         finally:
             conn.close()
 
     def test_connection(self) -> bool:
-        """Quick health check — used at startup to fail fast on bad config."""
+        """Quick health check - used at startup to fail fast on bad config."""
         with self._connection() as conn:
             with conn.cursor() as cur:
                 cur.execute("SELECT 1;")
@@ -57,8 +54,7 @@ class PostgresReadOnlyClient:
     def execute_query(self, sql: str, params: tuple | None = None) -> QueryResult:
         """
         Executes a single SQL statement and returns structured results.
-        Raises psycopg2.Error subclasses on failure — callers (the retry
-        node, in a later sub-problem) are expected to catch and handle these.
+        Raises psycopg2.Error subclasses on failure.
         """
         with self._connection() as conn:
             with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:

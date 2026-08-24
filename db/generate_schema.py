@@ -40,9 +40,6 @@ def main():
     output_path.write_text(markdown, encoding="utf-8")
 
     print(f"Schema block written to: {output_path}")
-    print("Next: paste this file's contents into prompts/system_prompt.md "
-          "where the << INSERT GENERATED SCHEMA HERE >> placeholder is.")
-
 
 if __name__ == "__main__":
     main()

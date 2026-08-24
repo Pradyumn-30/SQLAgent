@@ -1,6 +1,6 @@
 """
 Run this after setting up .env to confirm both the Postgres read-only
-connection and Redis connection are working before moving to sub-problem 2.
+connection and Redis connection are working
 
 Usage:
     python -m tests.test_connections
