@@ -33,7 +33,7 @@ def main():
     print(prompt[:600])
     print("--- End preview ---")
 
-    print("\nAll checks passed. Sub-problem 3 is working correctly.")
+    print("\nAll checks passed.")
 
 
 if __name__ == "__main__":
