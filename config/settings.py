@@ -26,12 +26,15 @@ class Settings(BaseSettings):
     # --- Memory TTL ---
     memory_ttl_seconds: int = 604800  # 7 days default
 
+    # --- Groq API (SQL generation & LLM) ---
+    groq_api_key: str
+    groq_model: str = "gpt-oss-20b"
+
     model_config = SettingsConfigDict(
         env_file=".env",
         env_file_encoding="utf-8",
         case_sensitive=False,
     )
-
 
 # Singleton instance — import this everywhere else.
 settings = Settings()
