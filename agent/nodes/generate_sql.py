@@ -3,7 +3,7 @@ SQL generation node.
 
 Takes the current AgentState (question + system prompt, and on a retry,
 the previous failed SQL + error) and calls Groq to produce a single SQL
-query. Does NOT validate or execute the query — that's sub-problems 5 and 6.
+query. Does NOT validate or execute the query.
 """
 
 from groq import Groq
@@ -16,30 +16,33 @@ _client = Groq(api_key=settings.groq_api_key)
 # The base system prompt (prompts/system_prompt.md) describes the FINAL
 # user-facing output format (Answer + Query), which is only relevant once
 # a query has succeeded.
-# 
-# For this node, we only want the raw SQL back, so we append an override 
-# instruction scoped to this call.
 
 _GENERATION_INSTRUCTION = (
     "\n\n---\n"
     "For this specific request, ignore the 'Output Format' section above. "
-    "Respond with ONLY the raw SQL query — no 'Answer:' or 'Query:' labels, "
-    "no explanation, no markdown code fences. Just the SQL statement itself."
+    "If the question can be answered using only the schema above, respond "
+    "with ONLY the raw SQL query — no 'Answer:' or 'Query:' labels, no "
+    "explanation, no markdown code fences, no placeholder/NULL columns "
+    "for data that doesn't exist. "
+    "If the question asks for data that is NOT in the schema (e.g. a "
+    "column that doesn't exist), do NOT invent a query with NULL or fake values."
+    "Instead, respond with EXACTLY this format: NO_QUERY: <one sentence "
+    "explaining what's missing>"
 )
 
 
 def _format_history(history: list) -> str:
     """
-    Formats prior turns (from memory_read) into a compact
-    block for the prompt. Only successful turns are included - a failed
-    turn's SQL isn't useful context for resolving a follow-up question,
-    and could confuse the model into repeating the same mistake.
+    Formats prior turns (from memory_read) into a compact block for the prompt.
+    Only successful turns are included. A failed turn's SQL isn't useful context
+    for resolving a follow-up question, and could confuse the model into repeating
+    the same mistake.
     """
     successful_turns = [t for t in history if t.get("succeeded")]
     if not successful_turns:
         return ""
 
-    lines = ["Prior conversation in this session (most recent last):"]
+    lines = ["Prior conversation in this session, oldest to newest (the LAST one is the most recent turn):"]
     for turn in successful_turns:
         lines.append(f"- Q: {turn.get('question')}")
         lines.append(f"  SQL used: {turn.get('sql')}")
@@ -48,13 +51,11 @@ def _format_history(history: list) -> str:
 
 def _build_user_message(state: AgentState) -> str:
     """
-    Builds the user-turn message sent to the LLM.
-
-    On first attempt, this is the question plus any relevant prior-turn history
-    (so follow-up questions like "what about last year?" can be resolved).
-
-    On retry, it instead includes the previous SQL and the error it produced,
-    so the model can self-correct rather than generating blindly again.
+    Builds the user-turn message sent to the LLM. On a first attempt this
+    is the question plus any relevant prior-turn history (so follow-up
+    questions like "what about last year?" can be resolved). On a retry,
+    it instead includes the previous SQL and the error it produced, so
+    the model can self-correct rather than generating blindly again.
     """
     question = state["question"]
 
@@ -71,8 +72,19 @@ def _build_user_message(state: AgentState) -> str:
         return (
             f"{history_block}\n\n"
             f"Current question: {question}\n\n"
-            f"Return only the SQL query that answers the current question, "
-            f"using the prior conversation for context if the question refers back to it."
+            f"IMPORTANT: If the current question omits details that were "
+            f"specified in the most recent prior question — such as a "
+            f"specific race, year, or driver filter — assume it is a "
+            f"follow-up continuing that SAME context, and carry that "
+            f"filter over. For example, if the prior question was about "
+            f"the Belgian Grand Prix and the current question just asks "
+            f"'who finished 19th?', interpret it as 'who finished 19th "
+            f"in the Belgian Grand Prix', not as an unfiltered question "
+            f"across all races. Only treat it as a fully new, unrelated "
+            f"question if it clearly changes topic (e.g. mentions a "
+            f"different race, or says something like 'overall' or "
+            f"'across all races').\n\n"
+            f"Return only the SQL query that answers the current question."
         )
 
     return f"Question: {question}\n\nReturn only the SQL query that answers this question."
@@ -96,8 +108,14 @@ def generate_sql(state: AgentState) -> AgentState:
 
     raw_sql = response.choices[0].message.content.strip()
 
+    if raw_sql.upper().startswith("NO_QUERY:"):
+        reason = raw_sql.split(":", 1)[1].strip() if ":" in raw_sql else (
+            "This information isn't available in the database."
+        )
+        return {"generated_sql": None, "no_query_reason": reason}
+
     # If the model still wraps SQL in a markdown fence
-    # despite instructions not to, extract just the fenced content.
+    # # despite instructions not to, extract just the fenced content.
     # if "```" in raw_sql:
     #     parts = raw_sql.split("```")
     #     # parts[1] is the content between the first pair of fences
@@ -106,4 +124,4 @@ def generate_sql(state: AgentState) -> AgentState:
     #         fenced = fenced[3:]
     #     raw_sql = fenced.strip()
 
-    return {"generated_sql": raw_sql}
+    return {"generated_sql": raw_sql, "no_query_reason": None}
