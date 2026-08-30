@@ -1,0 +1,25 @@
+-- These were the fixes that were made after v0.1 --
+
+1. Earlier generate SQL was forced to return a SQL only, so for queries where there was no corresponding column this node
+returned a sql query with null values, and the agent was forced to execute it (no error)
+But after modification we have allowed this node to return either a SQL Query or a no-query reason.
+So now even if the columns are not found, it will return a no-query reason and the retry loop will engage.
+Also _GENERAL_INSTRUCTION was updated to include NO_QUERY: <reason> and system_prompt was updated too.
+
+2. How validate sql works with no-query reason? The routing function _route_after_generation() routes valid SQL
+to validate node and no_query to format_response node. If no query is generated at all then it is not logical
+to engage retry loop.
+Retry loop is triggered only when SQL validation fails or SQL execution fails (and retry count is 
+within limits)
+
+3. Model was treating follow up questions as a standalone question - This was not a model or architecture problem
+but a prompt engineering problem, so we have updated the prompt to include the follow-up questions context.
+updated _format_history() and _build_user_message() function in generate_sql.py
+
+4. Fix the system prompt to filter text columns using %LIKE% instead of = operator.
+
+5. SQL query ran successfully and returned results but the model responded in its own language (and not the hardcoded
+response for empty rows provided in _summarize_results()) in format_response.py.
+This is fixed by making the _SUMMARY_SYSTEM_PROMPT to be very strict about the response format and added a function
+_format_rows_for_prompt() to format the rows in a way that the model can understand and respond accordingly. This is much
+easier for a small model to reliably parse than a nested Python dictionary repr.
