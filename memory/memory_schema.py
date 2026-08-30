@@ -8,14 +8,13 @@ Redis key conventions:
     session:{session_id}:history      -> a Redis LIST of turn records (JSON strings)
     session:{session_id}:preferences  -> a Redis JSON object (hash-like dict)
 
-Schema knowledge is NOT stored here — it's injected
+Schema knowledge is NOT stored here. It's injected
 statically into the system prompt. Memory covers only conversation history and 
 user preferences.
 """
 
 from dataclasses import asdict, dataclass
 from datetime import datetime, timezone
-from typing import Optional
 
 from agent.state import AgentState
 
@@ -32,8 +31,8 @@ def preferences_key(session_id: str) -> str:
 class TurnRecord:
     """One completed turn, as stored in the history list."""
     question: str
-    sql: Optional[str]
-    answer: Optional[str]
+    sql: str | None
+    answer: str | None
     succeeded: bool
     timestamp: str  # ISO 8601 UTC
 
